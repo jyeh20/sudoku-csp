@@ -1,10 +1,10 @@
 # Sudoku Solver Visualizer using Backtracking
-# Author: Jonathan Yeh
+#### Author: Jonathan Yeh
 
-# Description:
-# A Sudoku Solver using a simple backtracking algorithm wrapped with ReactJS
+## Description:
+##### A Sudoku Solver using a simple backtracking algorithm wrapped with ReactJS
 
-# To start
+## To start:
 Start the application with **yarn start**
 The puzzle is initialized with all 0s
 Click on the boxes to increment by 1
