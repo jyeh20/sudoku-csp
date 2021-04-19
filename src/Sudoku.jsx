@@ -3,8 +3,6 @@ import React, { useState, useEffect } from 'react'
 import { makeStyles } from '@material-ui/core/styles'
 
 export default function Sudoku() {
-  const update = useForceUpdate()
-  const classes = useStyles()
   const [puzzle, setPuzzle] = useState([[0, 1, 6, 3, 0, 8, 4, 2, 0],
                                         [8, 4, 0, 0, 0, 7, 3, 0, 0],
                                         [3, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -14,12 +12,25 @@ export default function Sudoku() {
                                         [0, 0, 0, 0, 0, 0, 0, 0, 3],
                                         [0, 0, 5, 7, 0, 0, 0, 6, 8],
                                         [0, 7, 8, 1, 0, 3, 2, 5, 0]])
+  const update = useForceUpdate()
+  const classes = useStyles()
   const [coordinates, setCoordinates] = useState([-1,-1])
   const [sudoku, setSudoku] = useState(null)
   const [rowError, setRowError] = useState(false)
   const [colError, setColError] = useState(false)
   const [boxError, setBoxError] = useState(false)
   const [solving, setSolving] = useState(false)
+  const [numberMap, setNumberMap] = useState(null)
+  const [puzzleStates, setPuzzleStates] = useState([])
+  const [stepState, setStepState] = useState(null)
+
+  class NumberTuple {
+    constructor(row, col, value) {
+      this.row = row
+      this.col = col
+      this.value = value
+    }
+  }
 
   function sleep(milliseconds) {
     const date = Date.now()
@@ -27,19 +38,6 @@ export default function Sudoku() {
     do {
       currentDate = Date.now()
     } while (currentDate - date < milliseconds)
-  }
-
-  const handleClick = (row, col) => {
-    let newPuzzle = puzzle
-    let val = newPuzzle[row][col]
-    if (val === 9) {
-      newPuzzle[row][col] = 0
-    } else {
-      newPuzzle[row][col]++
-    }
-    setPuzzle(newPuzzle)
-    setCoordinates([row, col])
-    update()
   }
 
   const rowConstraint = (board, row, value) => {
@@ -132,201 +130,122 @@ export default function Sudoku() {
   }
 
   useEffect(() => {
-    function getNumbers(row, col) {
-      let list = []
-      for (let r = -1; r < 2; r++) {
-        for (let c = -1; c < 2; c++) {
-          list.push(puzzle[row+r][col+c])
-        }
+    let puzzleBoard = puzzle
+    let coords = [-1, -1]
+
+    const handleClick = (row, col) => {
+      let newPuzzle = puzzle
+      let val = newPuzzle[row][col]
+      if (val === 9) {
+        newPuzzle[row][col] = 0
+      } else {
+        newPuzzle[row][col]++
       }
-      return list
+      setPuzzle(newPuzzle)
+      setCoordinates([row, col])
+      console.log(puzzle)
+      update()
     }
 
     function solve(board) {
-      const r = getNextEmptySpot(board)
-      let row = r[0]
-      let col = r[1]
+      coords = getNextEmptySpot(board)
+      let row = coords[0]
+      let col = coords[1]
 
       if (row === -1) {
         setSolving(false)
         return
       }
 
+      console.log(board)
+      sleep(5)
+
       for (let value = 1; value <= 9; value++) {
         if (checkConstraints(board, row, col, value)) {
           board[row][col] = value
           setPuzzle(board)
-          update()
-          sleep(5)
+          let copy = puzzleStates
+          copy.push(board)
+          setPuzzleStates(copy)
+          setStepState(puzzleStates.length)
           solve(puzzle)
         }
       }
-
       if (getNextEmptySpot(board)[0] !== -1) {
         board[row][col] = 0
       }
       return
     }
 
-    function solveLoop() {
+    const solveLoop = () => {
       solve(puzzle)
       update()
     }
 
+    const getNumbers = () => {
+      let nums = []
+      for (let row = 0; row < puzzle.length; row++) {
+        for (let col = 0; col < puzzle[row].length; col++) {
+          nums.push(new NumberTuple(row, col, puzzle[row][col]))
+        }
+      }
+
+      const numMap = nums.map((num) =>
+        <SmallBox puzzle={puzzleBoard} coords={coords} value={num.value} row={num.row} col={num.col} handleClick={handleClick} />
+      )
+
+      setNumberMap(numMap)
+    }
+
+    getNumbers()
+
     setSudoku({
+      getNumbers,
+      handleClick,
       solveLoop,
-      getNumbers
     })
-  }, [setPuzzle])
+  }, [coordinates, setCoordinates])
 
   const solv = () => sudoku.solveLoop()
-  // const getElements = (row, col) => sudoku.getNumbers(row, col)
+  const getNums = () => sudoku.getNumbers()
 
-  function getElements(row, col) {
-    let list = []
-    for (let r = -1; r < 2; r++) {
-      for (let c = -1; c < 2; c++) {
-        list.push(puzzle[row+r][col+c])
-      }
+  const updatePuzzle = (num) => {
+    const val = stepState + num
+    if (val > puzzleStates.length) {
+      return
     }
-    return list
+    if (val < 0) {
+      return
+    }
+    setStepState(val)
+    setPuzzle(puzzleStates[stepState])
+    getNums()
+    update()
+    console.log("PUZZLE", puzzleStates)
+    console.log(num)
+    console.log(stepState)
+    console.log(puzzle)
   }
 
   return (
     <div className={classes.wrapper}>
       <div className={classes.box}>
-        <BigBox elements={getElements(1, 1)} row={1} col={1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(1, 4)} row={1} col={4} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(1, 7)} row={1} col={7} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(4, 1)} row={4} col={1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(4, 4)} row={4} col={4} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(4, 7)} row={4} col={7} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(7, 1)} row={7} col={1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(7, 4)} row={7} col={4} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-        <BigBox elements={getElements(7, 7)} row={7} col={7} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
+        <>{numberMap}</>
       </div>
       <button disabled={solving} onClick={solv}>solve</button>
+      <button onClick={() => updatePuzzle(-10)}>-10</button>
+      <button onClick={() => updatePuzzle(-1)}>-1</button>
+      <button onClick={() => updatePuzzle(+1)}>+1</button>
+      <button onClick={() => updatePuzzle(+10)}>+10</button>
     </div>
   )
 }
 
-function BigBox({elements, row, col, handleClick, solving, coordinates, sleep, rowError, setRowError, colError, setColError, boxError, setBoxError}) {
+const SmallBox = (props) => {
   const classes = useStyles()
-  return (
-    <div className={classes.bigBox}>
-      <SmallBox element={elements[0]} row={row-1} col={col-1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[1]} row={row-1} col={col} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[2]} row={row-1} col={col+1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[3]} row={row} col={col-1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[4]} row={row} col={col} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[5]} row={row} col={col+1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[6]} row={row+1} col={col-1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[7]} row={row+1} col={col} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-      <SmallBox element={elements[8]} row={row+1} col={col+1} handleClick={handleClick} solving={solving} coordinates={coordinates}
-                sleep={sleep} rowError={rowError} setRowError={setRowError} colError={colError} setColError={setColError}
-                boxError={boxError} setBoxError={setBoxError}/>
-    </div>
-  )
-}
-
-function SmallBox({element, row, col, handleClick, solving, coordinates, sleep, rowError, setRowError, colError, setColError, boxError, setBoxError}) {
-  const classes = useStyles()
-
-  const inBox = (r, c, coords) => {
-    let trow = coords[0]
-    let tcol = coords[1]
-    let tPosRow = 0
-    let tPosCol = 0
-    let posRow = 0
-    let posCol = 0
-    if (r <= 2) {
-      posRow = 1
-    } else if (r >= 6) {
-      posRow = 7
-    } else {
-      posRow = 4
-    }
-
-    if (trow <= 2) {
-      tPosRow = 1
-    } else if (trow >= 6) {
-      tPosRow = 7
-    } else {
-      tPosRow = 4
-    }
-
-    if (c <= 2) {
-      posCol = 1
-    } else if (c >= 6) {
-      posCol = 7
-    } else {
-      posCol = 4
-    }
-
-    if (tcol <= 2) {
-      tPosCol = 1
-    } else if (tcol >= 6) {
-      tPosCol = 7
-    } else {
-      tPosCol = 4
-    }
-
-    if (posRow === tPosRow && posCol === tPosCol) {
-      return true
-    }
-    return false
-  }
-
-  const bgColor = () => {
-    if (row === coordinates[0] && col === coordinates[1]) {
-      return '#00FFDD'
-    }
-    if ((rowError && coordinates[0] === row) ||
-        (colError && coordinates[1] === col) ||
-        (boxError && inBox(row, col, coordinates))) {
-      return '#FFBBBB'
-    }
-    else {
-      return '#FFFFFF'
-    }
-  }
-  return (
-    <div id={"box"} className={classes.smallBox} style={{background:`${bgColor()}`}} onClick={() => {if(!solving) {handleClick(row, col)}}}>
-      {element}
+  return(
+    <div className={classes.smallBox} onClick={() => {props.handleClick(props.row, props.col)}}>
+      {props.puzzle[props.row][props.col]}
     </div>
   )
 }
@@ -351,21 +270,17 @@ const useStyles = makeStyles(() => ({
     flexWrap: 'wrap'
   },
 
-  bigBox: {
-    background: '#FFFFFF',
-    width: '32%',
-    border: '3px solid black',
-    display: 'flex',
-    flexWrap: 'wrap'
-  },
-
   smallBox: {
-    fontSize: '1.5vw',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    width: '32.25%',
-    border: '1px solid black'
+    width: '62px',
+    height: '62px',
+    background: '#FFFFFF',
+    border: '1px solid black',
+    '&:hover': {
+      background: '#00DDFF'
+    }
   }
 }))
 
