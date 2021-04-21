@@ -6,28 +6,34 @@ import Button from '@material-ui/core/Button'
 import TextField from '@material-ui/core/TextField'
 
 export default function Sudoku() {
-  const originalBoard = useRef([[0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0]])
-  const puzzle = useRef(originalBoard.current)
   const classes = useStyles()
+
+  // Refs
+  const originalBoard = useRef([[0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0, 0]])
+  const puzzle = useRef(originalBoard.current)
+  const nodes = useRef([])
   const coordinates = useRef([-1,-1])
+
+  // States
+  const [loading, setLoading] = useState(false)
   const [solving, setSolving] = useState(false)
   const [numberMap, setNumberMap] = useState(null)
   const [boardState, setBoardState] = useState(0)
   const [statesArray, setStatesArray] = useState([])
-  const nodes = useRef([])
 
-
+  /**
+   * Node class for holding values in our sudoku structure
+   */
   class NumberTuple {
-    constructor(row, col, value, original) {
-      this.original = original
+    constructor(row, col, value) {
       this.row = row
       this.col = col
       this.value = value
@@ -224,6 +230,7 @@ export default function Sudoku() {
   let stateArray = []
 
   function getSolution (board) {
+    setLoading(true)
     let coords = getNextEmptySpot(board)
     let row = coords[0]
     let col = coords[1]
@@ -232,6 +239,7 @@ export default function Sudoku() {
     if (row === -1) {
       setStatesArray(stateArray)
       setSolving(true)
+      setLoading(false)
       return
     }
 
@@ -248,6 +256,7 @@ export default function Sudoku() {
     if (getNextEmptySpot(board)[0] !== -1) {
       board[row][col] = 0
     }
+    setLoading(false)
     return
   }
 
@@ -304,7 +313,7 @@ export default function Sudoku() {
       <div className={classes.box}>
         <>{numberMap}</>
       </div>
-      <button disabled={solving} onClick={solve}>solve</button>
+      <button disabled={solving || loading} onClick={solve}>solve</button>
     </div>
   )
 }
@@ -315,6 +324,10 @@ const SmallBox = ({constraints, puzzle, coords, value, row, col, handleClick}) =
   const white = '#FFFFFF'
   const blue = '#AADDFF'
   const green = '#BBFFCC'
+  let val = value
+  if (val === 0) {
+    val = ""
+  }
   function getColor() {
     if (row === coords[0] && col === coords[1]) {
       return blue
@@ -331,7 +344,7 @@ const SmallBox = ({constraints, puzzle, coords, value, row, col, handleClick}) =
   }
   return(
     <div className={classes.smallBox} style={{background: `${getColor()}`}} onClick={() => {handleClick(row, col)}}>
-      {value}
+      {val}
     </div>
   )
 }
