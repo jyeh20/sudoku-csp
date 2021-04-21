@@ -2,33 +2,57 @@ import React, { useState, useEffect, useRef } from 'react'
 
 import { makeStyles } from '@material-ui/core/styles'
 
-export default function Sudoku() {
-  const originalBoard = [[0, 1, 6, 3, 0, 8, 4, 2, 0],
-                          [8, 4, 0, 0, 0, 7, 3, 0, 0],
-                          [3, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 6, 0, 9, 4, 0, 8, 0, 2],
-                          [0, 8, 1, 0, 3, 0, 7, 9, 0],
-                          [9, 0, 3, 0, 7, 6, 0, 4, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 3],
-                          [0, 0, 5, 7, 0, 0, 0, 6, 8],
-                          [0, 7, 8, 1, 0, 3, 2, 5, 0]]
-  const [puzzle, setPuzzle] = useState(originalBoard)
+import Button from '@material-ui/core/Button'
+import TextField from '@material-ui/core/TextField'
 
+export default function Sudoku() {
+  const originalBoard = useRef([[0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0]])
+  const puzzle = useRef(originalBoard.current)
   const classes = useStyles()
   const coordinates = useRef([-1,-1])
   const [solving, setSolving] = useState(false)
   const [numberMap, setNumberMap] = useState(null)
   const [boardState, setBoardState] = useState(0)
   const [statesArray, setStatesArray] = useState([])
-  const [nodesList, setNodesList] = useState([])
+  const nodes = useRef([])
+
 
   class NumberTuple {
-    constructor(row, col, value) {
+    constructor(row, col, value, original) {
+      this.original = original
       this.row = row
       this.col = col
       this.value = value
     }
   }
+
+  useEffect(() => {
+    initializeDisplay()
+  }, [puzzle])
+
+  useEffect(() => {
+    if (solving) {
+      if (boardState === statesArray.length) {
+        setSolving(!solving)
+        return
+      }
+      let row = statesArray[boardState][0]
+      let col = statesArray[boardState][1]
+      let value = statesArray[boardState][2]
+      coordinates.current = [row, col]
+      puzzle.current = (adjustNode(row, col, value))
+      sleep(60)
+      setBoardState(boardState + 1)
+    }
+  }, [coordinates, boardState, solving])
 
   const sleep = (milliseconds) => {
     const date = Date.now()
@@ -99,7 +123,6 @@ export default function Sudoku() {
     const rc = rowConstraint(board, row, value)
     const cc = colConstraint(board, col, value)
     const bc = boxConstraint(board, row, col, value)
-    console.log(row, col, rc, cc, bc)
     // No errors
     if (rc && cc && bc) {
           return true
@@ -178,7 +201,6 @@ export default function Sudoku() {
     const rc = rowVisualizerConstraint(board, row)
     const cc = colVisualizerConstraint(board, col)
     const bc = boxVisualizerConstraint(board, row, col)
-    console.log(row, col, rc, cc, bc)
     // No errors
     if (rc && cc && bc) {
           return true
@@ -199,17 +221,8 @@ export default function Sudoku() {
     return [-1, -1]
   }
 
-  const handleClick = (row, col) => {
-    let val = puzzle[row][col]
-    if (val === 9) {
-      puzzle[row][col] = 0
-    } else {
-      puzzle[row][col]++
-    }
-    coordinates.current = [row, col]
-  }
-
   let stateArray = []
+
   function getSolution (board) {
     let coords = getNextEmptySpot(board)
     let row = coords[0]
@@ -239,24 +252,26 @@ export default function Sudoku() {
   }
 
   function solve () {
-    getSolution(originalBoard)
+    getSolution(originalBoard.current)
   }
 
   const initializeDisplay = () => {
     let nums = []
-    for (let row = 0; row < puzzle.length; row++) {
-      for (let col = 0; col < puzzle[row].length; col++) {
-        nums.push(new NumberTuple(row, col, puzzle[row][col]))
+    for (let row = 0; row < originalBoard.current.length; row++) {
+      for (let col = 0; col < originalBoard.current[row].length; col++) {
+        nums.push(new NumberTuple(row, col, puzzle.current[row][col]))
       }
     }
 
-    setNodesList(nums)
+    nodes.current = nums
     displayNodes(nums)
+
+    return nums
   }
 
   const displayNodes = (nums) => {
     const numMap = nums.map((num) =>
-      <SmallBox constraints={checkVisualizerConstraints} puzzle={puzzle}
+      <SmallBox constraints={checkVisualizerConstraints} puzzle={puzzle.current}
       coords={coordinates.current} value={num.value} row={num.row} col={num.col} handleClick={handleClick}/>
     )
 
@@ -265,34 +280,24 @@ export default function Sudoku() {
 
   const adjustNode = (row, col, value) => {
     const index = (row * 9) + col
-    let nodes = nodesList
-    nodes[index].value = value
-    puzzle[row][col] = value
-    setNodesList(nodes)
-    displayNodes(nodes)
-    return puzzle
+    nodes.current[index].value = value
+    originalBoard.current[row][col] = value
+    puzzle.current=originalBoard.current
+    displayNodes(nodes.current)
+    return puzzle.current
   }
 
-  useEffect(() => {
-    // populate boxes
-    initializeDisplay()
-  }, [])
-
-  useEffect(() => {
-    if (solving) {
-      if (boardState === statesArray.length) {
-        setSolving(!solving)
-        return
-      }
-      let row = statesArray[boardState][0]
-      let col = statesArray[boardState][1]
-      let value = statesArray[boardState][2]
-      coordinates.current = [row, col]
-      setPuzzle(adjustNode(row, col, value))
-      sleep(60)
-      setBoardState(boardState + 1)
+  const handleClick = (row, col) => {
+    let val = originalBoard.current[row][col]
+    if (val === 9) {
+      val = 0
+    } else {
+      val++
     }
-  }, [coordinates, boardState, solving])
+    coordinates.current = [row, col]
+    originalBoard.current = adjustNode(row, col, val)
+    puzzle.current = originalBoard
+  }
 
   return (
     <div className={classes.wrapper}>
@@ -311,6 +316,9 @@ const SmallBox = ({constraints, puzzle, coords, value, row, col, handleClick}) =
   const blue = '#AADDFF'
   const green = '#BBFFCC'
   function getColor() {
+    if (row === coords[0] && col === coords[1]) {
+      return blue
+    }
     if (coords[0] !== -1) {
       if (!constraints(puzzle, row, col, value)) {
         return red
@@ -319,11 +327,7 @@ const SmallBox = ({constraints, puzzle, coords, value, row, col, handleClick}) =
     if (value === 0) {
       return green
     }
-    if (row === coords[0] && col === coords[1]) {
-      return blue
-    } else {
-      return white
-    }
+    return white
   }
   return(
     <div className={classes.smallBox} style={{background: `${getColor()}`}} onClick={() => {handleClick(row, col)}}>
