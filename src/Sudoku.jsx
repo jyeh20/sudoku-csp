@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 
-import { makeStyles } from '@material-ui/core/styles'
+import Visualizer from './Visualizer'
+
+import { makeStyles, withStyles } from '@material-ui/core/styles'
 
 import Button from '@material-ui/core/Button'
 import TextField from '@material-ui/core/TextField'
@@ -27,8 +29,10 @@ export default function Sudoku() {
   const [miracleSolving, setMiracleSolving] = useState(false)
   const [solving, setSolving] = useState(false)
   const [numberMap, setNumberMap] = useState(null)
+  const [speed, setSpeed] = useState(5)
   const [boardState, setBoardState] = useState(0)
   const [statesArray, setStatesArray] = useState([])
+  let stateArray = []
 
   /**
    * Node class for holding values in our sudoku structure
@@ -41,10 +45,16 @@ export default function Sudoku() {
     }
   }
 
+  /**
+   * Initialize our display on the *first* render
+   */
   useEffect(() => {
     initializeDisplay()
   }, [puzzle])
 
+  /**
+   * Side effects after first render
+   */
   useEffect(() => {
     if (solving) {
       if (boardState === statesArray.length) {
@@ -56,11 +66,15 @@ export default function Sudoku() {
       let value = statesArray[boardState][2]
       coordinates.current = [row, col]
       puzzle.current = (adjustNode(row, col, value))
-      sleep(5)
+      sleep(speed)
       setBoardState(boardState + 1)
     }
   }, [coordinates, boardState, solving])
 
+  /**
+   * Helper method to speed up/slow down the visualizer
+   * @param {int} milliseconds
+   */
   const sleep = (milliseconds) => {
     const date = Date.now()
     let currentDate = null
@@ -69,7 +83,18 @@ export default function Sudoku() {
     } while (currentDate - date < milliseconds)
   }
 
-  // Constraints when adding a value
+  // Constraints
+  // ===============================================================
+
+  // When adding a value
+
+  /**
+   * Checks if adding a value to a row will violate any constraints
+   * @param {int[][]} board
+   * @param {int} row
+   * @param {int} value
+   * @returns true if constraint is not violated, false otherwise
+   */
   const rowConstraint = (board, row, value) => {
     for (let col = 0; col < board[row].length; col++) {
       if (board[row][col] === 0) {
@@ -82,6 +107,13 @@ export default function Sudoku() {
     return true
   }
 
+  /**
+   * Checks if adding a value to a column will violate any constraints
+   * @param {int[][]} board
+   * @param {int} col
+   * @param {int} value
+   * @returns true if constraint is not violated, false otherwise
+   */
   const colConstraint = (board, col, value) => {
     for (let row = 0; row < board.length; row++) {
       if (board[row][col] === 0) {
@@ -94,6 +126,15 @@ export default function Sudoku() {
     return true
   }
 
+  /**
+   * Determines the 3x3 grid this row/col pair belongs to, then determines
+   * if adding the given value will violate any constraints
+   * @param {int[][]} board
+   * @param {int} row
+   * @param {int} col
+   * @param {int} value
+   * @returns true if constraint is not violated, false otherwise
+   */
   const boxConstraint = (board, row, col, value) => {
     let posRow = 0
     let posCol = 0
@@ -126,6 +167,14 @@ export default function Sudoku() {
     return true
   }
 
+  /**
+   * Helper method that calls all *regular* constraint methods
+   * @param {int[][]} board
+   * @param {int} row
+   * @param {int} col
+   * @param {int} value
+   * @returns true if constraints are not violated, false otherwise
+   */
   const checkConstraints = (board, row, col, value) => {
     const rc = rowConstraint(board, row, value)
     const cc = colConstraint(board, col, value)
@@ -138,7 +187,18 @@ export default function Sudoku() {
     return false
   }
 
-  // Miracle Sudoku constraints when adding a value
+
+  // Adding a value with Miracle Sudoku
+
+  /**
+   * Determines all "knights moves" away from the given row/col pair (an 'L' shape) and
+   * determines if the given value is valid
+   * @param {int[][]} board
+   * @param {int} row
+   * @param {int} col
+   * @param {int} value
+   * @returns true if the constraint is not violated, false otherwise
+   */
   const knightsMoveConstraint = (board, row, col, value) => {
     let positions = [1, 2]
     for (let i = 0; i < 8; i++) {
@@ -175,6 +235,15 @@ export default function Sudoku() {
     return true
   }
 
+  /**
+   * Determines all "kings moves" away from the given row/col pair (1 box in any direction) and
+   * determines if the given value is valid
+   * @param {int[][]} board
+   * @param {int} row
+   * @param {int} col
+   * @param {int} value
+   * @returns true if the constraint is not violated, false otherwise
+   */
   const kingsMoveConstraint = (board, row, col, value) => {
     for (let r = -1; r <= 1; r++) {
       for (let c = -1; c <= 1; c++) {
@@ -195,6 +264,14 @@ export default function Sudoku() {
     return true
   }
 
+  /**
+   * Helper method that calls all regualar *and* miracle constraint methods
+   * @param {int[][]} board
+   * @param {int} row
+   * @param {int} col
+   * @param {int} value
+   * @returns true if constraints are not violated, false otherwise
+   */
   const checkMiracleConstraints = (board, row, col, value) => {
     let cc = checkConstraints(board, row, col, value)
     let knights = knightsMoveConstraint(board, row, col, value)
@@ -207,165 +284,12 @@ export default function Sudoku() {
     return false
   }
 
-  // Constraints for the visualizer
-  const rowVisualizerConstraint = (board, row) => {
-    let visited = new Set()
-    for (let col = 0; col < board[row].length; col++) {
-      let value = board[row][col]
-      if (value === 0) {
-        continue
-      }
-      if (visited.has(value)) {
-        return false
-      }
-      visited.add(value)
-    }
-    return true
-  }
-
-  const colVisualizerConstraint = (board, col) => {
-    let visited = new Set()
-    for (let row = 0; row < board.length; row++) {
-      let value = board[row][col]
-      if (value === 0) {
-        continue
-      }
-      if (visited.has(value)) {
-        return false
-      }
-      visited.add(value)
-    }
-    return true
-  }
-
-  const boxVisualizerConstraint = (board, row, col) => {
-    let visited = new Set()
-    let posRow = 0
-    let posCol = 0
-    if (row <= 2) {
-      posRow = 1
-    } else if (row >= 6) {
-      posRow = 7
-    } else {
-      posRow = 4
-    }
-
-    if (col <= 2) {
-      posCol = 1
-    } else if (col >= 6) {
-      posCol = 7
-    } else {
-      posCol = 4
-    }
-
-    for (let r = -1; r <= 1; r++) {
-      for (let c = -1; c <= 1; c++) {
-        let value = board[posRow + r][posCol + c]
-        if (value === 0) {
-          continue
-        }
-        if (visited.has(value)) {
-          return false
-        }
-        visited.add(value)
-      }
-    }
-    return true
-  }
-
-  const checkVisualizerConstraints = (board, row, col) => {
-    const rc = rowVisualizerConstraint(board, row)
-    const cc = colVisualizerConstraint(board, col)
-    const bc = boxVisualizerConstraint(board, row, col)
-    // No errors
-    if (rc && cc && bc) {
-          return true
-    }
-    // At least one error
-    return false
-  }
-
-  // Miracle constraints for visualizer
-  const knightsMoveVisualizerConstraint = (board, row, col) => {
-    let value = board[row][col]
-    let positions = [1, 2] // positions array for checking
-
-    for (let i = 0; i < 8; i++) {
-      if (i === 4) { // swap rows/cols at 4th iteration
-        positions = [2,1]
-      }
-      if ((row + positions[0] < 0) || (col + positions[1] < 0)
-          || (row + positions[0] > 8) || (col + positions[1]) > 8) {
-        if (i % 2 === 0) {
-          positions = [positions[0], (-1 * positions[1])]
-        } else {
-          positions = [(-1 * positions[0]), positions[1]]
-        }
-        continue
-      }
-      let positionValue = board[row+positions[0]][col+positions[1]]
-      if (positionValue === 0) {
-        if (i % 2 === 0) {
-          positions = [positions[0], (-1 * positions[1])]
-        } else {
-          positions = [(-1 * positions[0]), positions[1]]
-        }
-        continue
-      }
-      if (positionValue === value) {
-        // error
-        console.log(row, col, "knight")
-        return false
-      }
-      if (i % 2 === 0) {
-        positions[1] *= -1
-      } else {
-        positions[0] *= -1
-      }
-    }
-
-    // no errors
-    return true
-  }
-
-  const kingsMoveVisualizerConstraint = (board, row, col) => {
-    let value = board[row][col]
-    for (let r = -1; r <= 1; r++) {
-      for (let c = -1; c <= 1; c++) {
-        if ((row + r) < 0 || (col + c) < 0
-            || (row + r) > 8 || (col + c) > 8) {
-          continue
-        }
-        if (r == 0 && c == 0) {
-          continue
-        }
-        let position = board[row+r][col+c]
-        if (position === 0) {
-          continue
-        }
-        if (position === value) {
-          // error
-          return false
-        }
-      }
-    }
-
-    // no errors
-    return true
-  }
-
-  const checkMiracleVisualizerConstraints = (board, row, col) => {
-    let cc = checkVisualizerConstraints(board, row, col)
-    let knights = knightsMoveVisualizerConstraint(board, row, col)
-    let kings = kingsMoveVisualizerConstraint(board, row, col)
-
-    if (cc && knights && kings) {
-      return true
-    }
-
-    return false
-  }
-
+  /**
+   * Finds the next empty spot given a valid sudoku board
+   * @param {int[][]} board
+   * @returns a row/col pair indicating the next empty spot in this sudoku puzzle
+   *          or [-1, -1] if there are no empty spots
+   */
   const getNextEmptySpot = (board) => {
     for (let row = 0; row < board.length; row++) {
       for (let col = 0; col < board[row].length; col++) {
@@ -378,11 +302,13 @@ export default function Sudoku() {
     return [-1, -1]
   }
 
-  let stateArray = []
-
-  function getSolution (board) {
+  /**
+   * Uses backtracking to attempt to find a solution to a given sudoku puzzle
+   * using regular constraints
+   */
+  const getSolution = () => {
     setLoading(true)
-    let coords = getNextEmptySpot(board)
+    let coords = getNextEmptySpot(originalBoard.current)
     let row = coords[0]
     let col = coords[1]
 
@@ -396,22 +322,26 @@ export default function Sudoku() {
 
     // Try every value that fits constraints
     for (let value = 1; value <= 9; value++) {
-      if (checkConstraints(board, row, col, value)) {
-        board[row][col] = value
+      if (checkConstraints(originalBoard.current, row, col, value)) {
+        originalBoard.current[row][col] = value
         stateArray[stateArray.length] = [row, col, value]
-        getSolution(board)
+        getSolution()
       }
     }
 
     // Unsolvable
-    if (getNextEmptySpot(board)[0] !== -1) {
-      board[row][col] = 0
+    if (getNextEmptySpot(originalBoard.current)[0] !== -1) {
+      originalBoard.current[row][col] = 0
     }
     setLoading(false)
     return
   }
 
-  function getMiracleSolution () {
+  /**
+   * Uses backtracking to attempt to find a solution to a given sudoku puzzle
+   * using miracle constraints
+   */
+  const getMiracleSolution = () => {
     setLoading(true)
     let coords = getNextEmptySpot(originalBoard.current)
     let row = coords[0]
@@ -443,15 +373,10 @@ export default function Sudoku() {
     return
   }
 
-  function solve () {
-    getSolution(originalBoard.current)
-  }
-
-  function miracleSolve () {
-    setMiracleSolving(true)
-    getMiracleSolution()
-  }
-
+  /**
+   * Sets nodes ref to the contents of originalBoard, and updates the display of
+   * the sudoku puzzle
+   */
   const initializeDisplay = () => {
     let nums = []
     for (let row = 0; row < originalBoard.current.length; row++) {
@@ -462,19 +387,28 @@ export default function Sudoku() {
 
     nodes.current = nums
     displayNodes(nums)
-
-    return nums
   }
 
+  /**
+   * Sets numberMap to a map of Visualizer components to be displayed
+   * @param {NumberTuple[]} nums
+   */
   const displayNodes = (nums) => {
     const numMap = nums.map((num) =>
-      <SmallBox solving={solving} constraints={(miracleSolving) ? checkMiracleVisualizerConstraints : checkVisualizerConstraints} puzzle={puzzle.current}
-      coords={coordinates.current} value={num.value} row={num.row} col={num.col} handleClick={handleClick}/>
+      <Visualizer solving={solving} miracle={miracleSolving} puzzle={puzzle.current}
+      coords={coordinates.current} value={num.value} row={num.row} col={num.col} handleClick={handleManualUpdate}/>
     )
 
     setNumberMap(numMap)
   }
 
+  /**
+   * Given a row, column, and value, adjusts the display accordingly
+   * @param {int} row
+   * @param {int} col
+   * @param {int} value
+   * @returns the current state of the puzzle
+   */
   const adjustNode = (row, col, value) => {
     const index = (row * 9) + col
     nodes.current[index].value = value
@@ -484,7 +418,15 @@ export default function Sudoku() {
     return puzzle.current
   }
 
-  const handleClick = (row, col) => {
+  // Event Handlers
+  // ====================================================================
+
+  /**
+   * Updates a "box" in the puzzle when clicked on by a user and increments it by 1
+   * @param {int} row
+   * @param {int} col
+   */
+  const handleManualUpdate = (row, col) => {
     let val = originalBoard.current[row][col]
     if (val === 9) {
       val = 0
@@ -496,52 +438,105 @@ export default function Sudoku() {
     puzzle.current = originalBoard
   }
 
+  /**
+   * Sets the puzzle state to solving, and solves a puzzle following regular constraints
+   */
+  const solve = () => {
+    getSolution(originalBoard.current)
+  }
+
+  /**
+   * Sets the puzzle state to solving, and solves a puzzle following miracle constraints
+   */
+  const miracleSolve = () => {
+    setMiracleSolving(true)
+    getMiracleSolution()
+  }
+
+  /**
+   * Updates the speed state to a millisecond value inputted by a user
+   * @param {event} e
+   */
+  const handleSpeedChange = (e) => {
+    setSpeed(e.target.value)
+  }
+
   return (
     <div className={classes.wrapper}>
-      <div className={classes.box}>
-        <>{numberMap}</>
+      <div className={classes.middleDiv}>
+        <Speed disabled={solving} variant="outlined" label="Visualizer Speed" onChange={handleSpeedChange} defaultValue={speed} type="number" />
+        <div className={classes.box}>
+          <>{numberMap}</>
+        </div>
       </div>
-      <button disabled={solving || loading} onClick={solve}>solve</button>
-      <button disabled={solving || loading} onClick={miracleSolve}>Miracle solve</button>
+      <div className={classes.buttons}>
+        <SolveButton className={classes.solve} disabled={solving || loading} onClick={solve}>solve</SolveButton>
+        <SolveButton className={classes.miracleSolve} disabled={solving || loading} onClick={miracleSolve}>Miracle solve</SolveButton>
+      </div>
     </div>
   )
 }
 
-const SmallBox = ({solving, constraints, puzzle, coords, value, row, col, handleClick}) => {
-  const classes = useStyles()
-  const red = '#FFAAAA'
-  const white = '#FFFFFF'
-  const blue = '#AADDFF'
-  const green = '#BBFFCC'
-  let val = value
-  if (val === 0) {
-    val = ""
-  }
-  function getColor() {
-    if (coords[0] !== -1) {
-      if (!constraints(puzzle, row, col)) {
-        return red
-      }
-    }
-    if (row === coords[0] && col === coords[1]) {
-      return blue
-    }
-    if (coords[0] !== -1 && solving) {
-      if (!constraints(puzzle, row, col)) {
-        return red
-      }
-    }
-    if (value === 0) {
-      return green
-    }
-    return white
-  }
-  return(
-    <div className={classes.smallBox} style={{background: `${getColor()}`}} onClick={() => {handleClick(row, col)}}>
-      {val}
-    </div>
-  )
-}
+
+const SolveButton = withStyles({
+  root: {
+    boxShadow: "none",
+    textTransform: "none",
+    margin: 'auto',
+    width: '15vw',
+    fontSize: 24,
+    padding: "6px 25px",
+    border: "1px solid",
+    lineHeight: 1.5,
+    borderRadius: 20,
+    backgroundColor: '#80aeff',
+    borderColor: '#80aeff',
+    fontFamily: "Roboto",
+    fontWeight: 600,
+    "&:hover": {
+      backgroundColor: '#709eee',
+      borderColor: '#709eee',
+      boxShadow: "none",
+    },
+    "&:active": {
+      boxShadow: "none",
+      backgroundColor: '#80aeff',
+      borderColor: '#80aeff',
+    },
+    "&:focus": {
+      boxShadow: "0 0 0 0.2rem rgba(0,123,255,.5)",
+    },
+  },
+})(Button)
+
+const Speed = withStyles({
+  root: {
+    width: '120px',
+    height: '48px',
+    margin: 'auto',
+    gridColumnStart: 1,
+    gridColumnEnd: 2,
+    fontFamily: "Roboto",
+    "& label.Mui-focused": {
+      color: '#80aeff',
+    },
+    "& .MuiInput-underline:after": {
+      borderBottomColor: '#80aeff',
+    },
+    "& .MuiOutlinedInput-root": {
+      "& fieldset": {
+        borderColor: '#000000',
+      },
+      "&:hover fieldset": {
+        borderColor: '#80aeff',
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: '#80aeff',
+        border: "3px solid",
+      },
+    },
+  },
+})(TextField)
 
 const useStyles = makeStyles(() => ({
   wrapper: {
@@ -552,26 +547,42 @@ const useStyles = makeStyles(() => ({
     flexDirection: 'column',
   },
 
+  middleDiv: {
+    margin: 'auto',
+    height: '450px',
+    width: '100vw',
+    display: 'grid',
+    gridTemplateColumns: '33vw 33vw 33vw'
+  },
+
   box: {
     margin: 'auto',
     marginTop: 'auto',
     marginBottom: 'auto',
+    gridColumnStart: 2,
+    gridColumnEnd: 3,
     background: '#EEEEEE',
-    width: '576px',
-    height: '576px',
+    width: '450px',
+    height: '450px',
     display: 'flex',
     flexWrap: 'wrap'
   },
 
-  smallBox: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '62px',
-    height: '62px',
-    border: '1px solid black',
-    '&:hover': {
-      background: '#00DDFF'
-    }
+  buttons: {
+    display: 'grid',
+    marginBottom: '4%',
+    gridTemplateColumns: 'auto auto',
+    width: '50%',
+    margin: 'auto',
+  },
+
+  solve: {
+    gridColumnStart: 1,
+    gridColumnEnd: 2,
+  },
+
+  miracleSolve: {
+    gridColumnStart: 2,
+    gridColumnEnd: 3
   }
 }))
