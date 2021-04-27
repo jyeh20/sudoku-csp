@@ -442,7 +442,7 @@ export default function Sudoku() {
    * Sets the puzzle state to solving, and solves a puzzle following regular constraints
    */
   const solve = () => {
-    getSolution(originalBoard.current)
+    getSolution()
   }
 
   /**
