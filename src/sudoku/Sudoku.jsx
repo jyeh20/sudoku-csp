@@ -7,8 +7,11 @@ import { makeStyles, withStyles } from '@material-ui/core/styles'
 import Button from '@material-ui/core/Button'
 import TextField from '@material-ui/core/TextField'
 
+import app from '../firebase'
+
 export default function Sudoku() {
   const classes = useStyles()
+  const db = app.firestore()
 
   // Refs
   const originalBoard = useRef([[0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -49,6 +52,7 @@ export default function Sudoku() {
    * Initialize our display on the *first* render
    */
   useEffect(() => {
+    getRandomNormalBoard()
     initializeDisplay()
   }, [puzzle])
 
@@ -70,6 +74,58 @@ export default function Sudoku() {
       setBoardState(boardState + 1)
     }
   }, [coordinates, boardState, solving])
+
+
+  // Get Boards
+
+  const resetBoard = () => {
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 9; col++) {
+        adjustNode(row, col, 0)
+      }
+    }
+  }
+
+  const getRandomNormalBoard = () => {
+    resetBoard()
+    const collectionRef = db.collection("regularBoards")
+    collectionRef.get().then((querySnapshot) => {
+      const maxIndex = querySnapshot.size
+      const randomIndex = Math.floor(Math.random() * maxIndex)
+      const boardRef = querySnapshot.docs[randomIndex].data().board
+      let row = -1;
+      for (let i = 0; i < boardRef.length; i++) {
+        if (i % 9 === 0) {
+          row++
+        }
+        let col = i - (row * 9)
+        originalBoard.current[row][col] = parseInt(boardRef[i])
+        puzzle.current = originalBoard.current
+      }
+      initializeDisplay()
+    })
+  }
+
+  const getRandomMiracleBoard = () => {
+    resetBoard()
+    const collectionRef = db.collection("miracleBoards")
+    collectionRef.get().then((querySnapshot) => {
+      const maxIndex = querySnapshot.size
+      const randomIndex = Math.floor(Math.random() * maxIndex)
+      const boardRef = querySnapshot.docs[randomIndex].data().board
+      let row = -1;
+      for (let i = 0; i < boardRef.length; i++) {
+        if (i % 9 === 0) {
+          row++
+        }
+        let col = i - (row * 9)
+        originalBoard.current[row][col] = parseInt(boardRef[i])
+        puzzle.current = originalBoard.current
+      }
+      initializeDisplay()
+    })
+  }
+
 
   /**
    * Helper method to speed up/slow down the visualizer
@@ -411,6 +467,9 @@ export default function Sudoku() {
    */
   const adjustNode = (row, col, value) => {
     const index = (row * 9) + col
+    if (nodes.current[index] === undefined) {
+      return
+    }
     nodes.current[index].value = value
     originalBoard.current[row][col] = value
     puzzle.current=originalBoard.current
@@ -468,11 +527,17 @@ export default function Sudoku() {
         <div className={classes.box}>
           <>{numberMap}</>
         </div>
+        <div className={classes.boardButtons}>
+        <BoardButton disabled={solving || loading} onClick={resetBoard}>Reset Board</BoardButton>
+        <BoardButton disabled={solving || loading} onClick={getRandomNormalBoard}>Preset Sudoku Puzzle</BoardButton>
+        <BoardButton disabled={solving || loading} onClick={getRandomMiracleBoard}>Preset Miracle Puzzle</BoardButton>
       </div>
-      <div className={classes.buttons}>
-        <SolveButton className={classes.solve} disabled={solving || loading} onClick={solve}>solve</SolveButton>
-        <SolveButton className={classes.miracleSolve} disabled={solving || loading} onClick={miracleSolve}>Miracle solve</SolveButton>
       </div>
+      <div className={classes.solveButtons}>
+        <SolveButton className={classes.solve} disabled={solving || loading} onClick={solve}>Solve</SolveButton>
+        <SolveButton className={classes.miracleSolve} disabled={solving || loading} onClick={miracleSolve}>Miracle Solve</SolveButton>
+      </div>
+
     </div>
   )
 }
@@ -484,6 +549,38 @@ const SolveButton = withStyles({
     textTransform: "none",
     margin: 'auto',
     width: '15vw',
+    fontSize: 24,
+    padding: "6px 25px",
+    border: "1px solid",
+    lineHeight: 1.5,
+    borderRadius: 20,
+    backgroundColor: '#80aeff',
+    borderColor: '#80aeff',
+    fontFamily: "Roboto",
+    fontWeight: 600,
+    "&:hover": {
+      backgroundColor: '#709eee',
+      borderColor: '#709eee',
+      boxShadow: "none",
+    },
+    "&:active": {
+      boxShadow: "none",
+      backgroundColor: '#80aeff',
+      borderColor: '#80aeff',
+    },
+    "&:focus": {
+      boxShadow: "0 0 0 0.2rem rgba(0,123,255,.5)",
+    },
+  },
+})(Button)
+
+const BoardButton = withStyles({
+  root: {
+    boxShadow: "none",
+    textTransform: "none",
+    margin: 'auto',
+    marginBottom: '15px',
+    width: '60%',
     fontSize: 24,
     padding: "6px 25px",
     border: "1px solid",
@@ -568,7 +665,7 @@ const useStyles = makeStyles(() => ({
     flexWrap: 'wrap'
   },
 
-  buttons: {
+  solveButtons: {
     display: 'grid',
     marginBottom: '4%',
     gridTemplateColumns: 'auto auto',
@@ -584,5 +681,14 @@ const useStyles = makeStyles(() => ({
   miracleSolve: {
     gridColumnStart: 2,
     gridColumnEnd: 3
-  }
+  },
+
+  boardButtons: {
+    display: 'grid',
+    margin: 'auto',
+    width: '80%',
+    gridTemplateRows: 'auto auto auto auto',
+    gridColumnStart: 3,
+    girdColumnEnd: 4,
+  },
 }))
