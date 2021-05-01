@@ -79,15 +79,20 @@ export default function Sudoku() {
   // Get Boards
 
   const resetBoard = () => {
+    setLoading(true)
+    setStatesArray([])
+    setBoardState(0)
     for (let row = 0; row < 9; row++) {
       for (let col = 0; col < 9; col++) {
         adjustNode(row, col, 0)
       }
     }
+    setLoading(false)
   }
 
   const getRandomNormalBoard = () => {
     resetBoard()
+    setLoading(true)
     const collectionRef = db.collection("regularBoards")
     collectionRef.get().then((querySnapshot) => {
       const maxIndex = querySnapshot.size
@@ -104,10 +109,12 @@ export default function Sudoku() {
       }
       initializeDisplay()
     })
+    setLoading(false)
   }
 
   const getRandomMiracleBoard = () => {
     resetBoard()
+    setLoading(true)
     const collectionRef = db.collection("miracleBoards")
     collectionRef.get().then((querySnapshot) => {
       const maxIndex = querySnapshot.size
@@ -124,6 +131,7 @@ export default function Sudoku() {
       }
       initializeDisplay()
     })
+    setLoading(false)
   }
 
 
@@ -387,6 +395,7 @@ export default function Sudoku() {
 
     // Unsolvable
     if (getNextEmptySpot(originalBoard.current)[0] !== -1) {
+      stateArray[stateArray.length] = [row, col, 0]
       originalBoard.current[row][col] = 0
     }
     setLoading(false)

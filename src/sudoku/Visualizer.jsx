@@ -170,6 +170,9 @@ const Visualizer = ({solving, miracle, puzzle, coords, value, row, col, handleCl
     }
 
   function getColor() {
+    if (row === coords[0] && col === coords[1]) {
+      return blue
+    }
     if (coords[0] !== -1) {
       if (miracle) {
         if (!checkMiracleVisualizerConstraints()) {
@@ -180,9 +183,6 @@ const Visualizer = ({solving, miracle, puzzle, coords, value, row, col, handleCl
           return red
         }
       }
-    }
-    if (row === coords[0] && col === coords[1]) {
-      return blue
     }
     if (coords[0] !== -1 && solving) {
       if (miracle) {
