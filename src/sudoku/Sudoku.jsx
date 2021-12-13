@@ -138,6 +138,7 @@ export default function Sudoku() {
   /**
    * Helper method to speed up/slow down the visualizer
    * @param {int} milliseconds
+   * Source: https://www.sean.co.uk/a/webdesign/javascriptdelay.shtm
    */
   const sleep = (milliseconds) => {
     const date = Date.now()
