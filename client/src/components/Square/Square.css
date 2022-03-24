@@ -1,0 +1,9 @@
+.Square {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffe0;
+}
+.Square:hover {
+  background-color: #dfdfc0;
+}

@@ -1,0 +1,18 @@
+.Button {
+  width: 40%;
+  height: 30%;
+  border: 3px solid #4488ee;
+  background-color: #8dc6f9;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(12px 12px 4px #333333);
+  transition-duration: 0.05s;
+  user-select: none;
+}
+.Button:hover {
+  background-color: #7db6e9;
+  filter: drop-shadow(7px 7px 3px #333333);
+  transition-duration: 0.15s;
+}
